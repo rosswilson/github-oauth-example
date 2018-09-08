@@ -89,6 +89,8 @@ app.get('/callback', (req, res) => {
 
   apiRequest(config.tokenURL, { method: 'POST', body: postBody })
     .then(apiRes => {
+      res.clearCookie('state')
+
       if (!apiRes['access_token']) {
         return res.status(400).send('Didn\'t receive an access_token from GitHub')
       }
