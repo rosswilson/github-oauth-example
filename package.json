@@ -9,6 +9,9 @@
   },
   "author": "Ross Wilson <me@rosswilson.co.uk>",
   "license": "MIT",
+  "repository": {
+    "url": "git@github.com:rosswilson/github-oauth-example.git"
+  },
   "dependencies": {
     "cookie-parser": "^1.4.4",
     "express": "^4.17.1",
