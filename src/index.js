@@ -1,107 +1,113 @@
-const express = require('express')
-const app = express()
-const cookieParser = require('cookie-parser')
-const uuidv4 = require('uuid/v4')
-const querystring = require('querystring')
+import express from "express";
+import cookieParser from "cookie-parser";
+import { v4 as uuidv4 } from "uuid";
+import querystring from "querystring";
 
-const config = require('./config')
-const { apiRequest } = require('./api')
+import * as config from "./config.js";
+import apiRequest from "./api.js";
 
-app.use(cookieParser())
+const app = express();
 
-app.get('/', (req, res) => {
-  const { accessToken } = req.cookies
+app.use(cookieParser());
+
+app.get("/", (req, res) => {
+  const { accessToken } = req.cookies;
 
   // If there is an access token in the session, then the user is already logged in
   if (accessToken) {
-    res.send('Logged in!')
+    res.send("Logged in!");
   } else {
-    res.send('Not logged in! <a href="/login">Login</a>')
+    res.send('Not logged in! <a href="/login">Login</a>');
   }
-})
+});
 
-app.get('/repos', (req, res) => {
-  const { accessToken } = req.cookies
+app.get("/repos", (req, res) => {
+  const { accessToken } = req.cookies;
 
   // If there is no access token, redirect to root
   if (!accessToken) {
-    res.redirect('/')
+    res.redirect("/");
   }
 
-  const apiOpts = { accessToken }
+  const apiOpts = { accessToken };
 
-  apiRequest(`${config.apiURLBase}/user/repos?sort=created&direction=desc&limit=5`, apiOpts)
-    .then(apiRes => {
-      if (!apiRes.length) {
-        return res.send('Couldn\'t fetch your repos')
-      }
+  apiRequest(
+    `${config.apiURLBase}/user/repos?sort=created&direction=desc&limit=5`,
+    apiOpts
+  ).then((apiRes) => {
+    if (!apiRes.length) {
+      return res.send("Couldn't fetch your repos");
+    }
 
-      const html = apiRes.map(repo => `<li>${repo.name}</li>`).join('\n')
-      res.send(`<ul>${html}</ul>`)
-    })
-})
+    const html = apiRes.map((repo) => `<li>${repo.name}</li>`).join("\n");
+    res.send(`<ul>${html}</ul>`);
+  });
+});
 
-app.get('/login', (req, res) => {
-  res.clearCookie('accessToken')
+app.get("/login", (req, res) => {
+  res.clearCookie("accessToken");
 
-  const state = uuidv4()
+  const state = uuidv4();
 
-  res.cookie('state', state, {
+  res.cookie("state", state, {
     maxAge: 1000 * 60 * 15,
-    httpOnly: true
-  })
+    httpOnly: true,
+  });
 
   const params = {
-    'response_type': 'code',
-    'client_id': config.clientId,
-    'redirect_uri': config.redirectUrl,
-    scope: 'user public_repo',
-    state
-  }
+    response_type: "code",
+    client_id: config.clientId,
+    redirect_uri: config.redirectUrl,
+    scope: "user public_repo",
+    state,
+  };
 
-  const redirectUrl = `${config.authorizeURL}?${querystring.stringify(params)}`
+  const redirectUrl = `${config.authorizeURL}?${querystring.stringify(params)}`;
 
   // Redirect the user to Github's authorization page
-  res.redirect(redirectUrl)
-})
+  res.redirect(redirectUrl);
+});
 
-app.get('/callback', (req, res) => {
-  const { code, state } = req.query
+app.get("/callback", (req, res) => {
+  const { code, state } = req.query;
 
   if (!code || !state) {
-    return res.status(400).send('Callback was missing either code or state')
+    return res.status(400).send("Callback was missing either code or state");
   }
 
-  const { state: expectedState } = req.cookies
+  const { state: expectedState } = req.cookies;
 
   // This ensures our app can’t be tricked into sending an attacker’s authorization code to GitHub
   if (state !== expectedState) {
-    return res.status(400).send('State param did not match expected state')
+    return res.status(400).send("State param did not match expected state");
   }
 
   const postBody = JSON.stringify({
-    'grant_type': 'authorization_code',
-    'client_id': config.clientId,
-    'client_secret': config.clientSecret,
-    'redirect_uri': config.redirectUrl,
-    code
-  })
+    grant_type: "authorization_code",
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    redirect_uri: config.redirectUrl,
+    code,
+  });
 
-  apiRequest(config.tokenURL, { method: 'POST', body: postBody })
-    .then(apiRes => {
-      res.clearCookie('state')
+  apiRequest(config.tokenURL, { method: "POST", body: postBody }).then(
+    (apiRes) => {
+      res.clearCookie("state");
 
-      if (!apiRes['access_token']) {
-        return res.status(400).send('Didn\'t receive an access_token from GitHub')
+      if (!apiRes["access_token"]) {
+        return res
+          .status(400)
+          .send("Didn't receive an access_token from GitHub");
       }
 
-      res.cookie('accessToken', apiRes['access_token'], {
+      res.cookie("accessToken", apiRes["access_token"], {
         maxAge: 1000 * 60 * 60,
-        httpOnly: true
-      })
+        httpOnly: true,
+      });
 
-      res.redirect('/repos')
-    })
-})
+      res.redirect("/repos");
+    }
+  );
+});
 
-app.listen(3000, () => console.log('Example app listening on port 3000!'))
+app.listen(3000, () => console.log("Example app listening on port 3000!"));
